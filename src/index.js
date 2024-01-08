@@ -3,8 +3,18 @@ import {
     getFirestore, collection, 
     // getDocs,
     onSnapshot,
-    addDoc, deleteDoc, doc
+    addDoc, deleteDoc, doc,
+    query, where,
+    orderBy, serverTimestamp,
+    getDoc, updateDoc
 } from 'firebase/firestore'
+import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signOut,
+    signInWithEmailAndPassword,
+    onAuthStateChanged
+} from 'firebase/auth'
 
 
 const firebaseConfig = {
@@ -21,9 +31,14 @@ initializeApp(firebaseConfig)
 
 // init servises
 const db = getFirestore()
+const auth = getAuth()
 
 // collection ref
 const colRef = collection(db, 'books')
+
+//queries
+// const q = query(colRef, where("author", "==", "patrick rothfuss"), orderBy('title', 'desc'))
+const q = query(colRef, orderBy('createdAt'))
 
 // get collection data
 // getDocs(colRef)
@@ -38,9 +53,9 @@ const colRef = collection(db, 'books')
 //     console.log(err.message)
 //   })
 
-// get real time data 
+// get real time data (we can pass collection or query)
 
-onSnapshot(colRef, (snapshot) => {
+const unsubCol = onSnapshot(q, (snapshot) => {
     let books = []
     snapshot.docs.forEach((doc) => {
         books.push({ ...doc.data(), id: doc.id })
@@ -58,6 +73,7 @@ onSnapshot(colRef, (snapshot) => {
     addDoc(colRef, {
         title: addBookForm.title.value,
         author: addBookForm.author.value,
+        createdAt: serverTimestamp()
     })
     //addDoc is async
     .then(() => {
@@ -77,3 +93,92 @@ onSnapshot(colRef, (snapshot) => {
             deleteBookForm.reset()
         })
   })
+
+  //get a single document
+
+ const docRef = doc(db, 'books', "CaosRX4eeiTkjMsARIU2")
+ console.log(docRef)
+//   getDoc(docRef)
+//     .then((doc) => {
+//         console.log(doc.data(), doc.id)
+//     })
+
+const unsubDoc = onSnapshot(docRef, (doc) => {
+    console.log(doc.data(), doc.id)
+})
+
+// updating a document
+const updateForm = document.querySelector('.update')
+updateForm.addEventListener('submit', (e) => {
+    e.preventDefault()
+
+    const docRef = doc(db, 'books', updateForm.id.value)
+    console.log(docRef)
+
+    updateDoc(docRef, {
+        title: 'updated title'
+    })
+    .then(() => {
+        updateForm.reset()
+    })
+})
+
+//signing user up
+const signupForm = document.querySelector('.signup')
+signupForm.addEventListener('submit', (e) => {
+    e.preventDefault()
+
+    const email = signupForm.email.value
+    console.log(email)
+    const password = signupForm.password.value
+    console.log(password)
+    createUserWithEmailAndPassword(auth, email, password)
+    .then((cred) => {
+        // console.log(cred, cred.user, "user created")
+        signupForm.reset()
+    })
+    .catch((err) => {
+        // console.log(err.message)
+    })
+})
+
+// login and logout
+const logoutButton = document.querySelector('.logout')
+logoutButton.addEventListener('click', () => {
+    signOut(auth)
+        .then(() => {
+            // console.log('the user signed out')
+        })
+        .catch(err => console.log(err.message))
+
+})
+
+const loginForm = document.querySelector('.login')
+loginForm.addEventListener('submit', (e) => {
+    e.preventDefault()
+
+    const email = loginForm.email.value
+    const password = loginForm.password.value
+
+    signInWithEmailAndPassword(auth, email, password)
+        .then(cred => {
+            // console.log('user logged in', cred.user)
+        })
+        .catch(err => console.log(err.message))
+})
+
+//subscription to auth changes
+
+const unsubAuth = onAuthStateChanged(auth, (user) => {
+    console.log('user status changed', user)
+})
+
+// unsubscription from changes (auth & db)
+const unsubButton = document.querySelector('.unsub')
+unsubButton.addEventListener('click', () => {
+    console.log('unsubscribing')
+    unsubAuth()
+    unsubCol()
+    unsubDoc()
+})
+
