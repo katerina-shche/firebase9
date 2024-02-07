@@ -88,6 +88,7 @@ const unsubCol = onSnapshot(q, (snapshot) => {
 
     const docRef = doc(db, 'books', deleteBookForm.id.value)
 
+      //deleteDoc returns a promise with info about succes/not but it does not contain any data obj to use
     deleteDoc(docRef)
         .then(() => {
             deleteBookForm.reset()
